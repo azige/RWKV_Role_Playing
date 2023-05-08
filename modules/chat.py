@@ -27,7 +27,7 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
-  def __run_rnn(self, next):
+  def __run_rnn(self, next, base_stat="chat"):
     model_tokens = []
     model_state = None
 
@@ -42,7 +42,7 @@ class Chat:
         out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
         self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     else:
-      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, base_stat)
       self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
 
     return self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(next))
@@ -103,7 +103,7 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}:"
-    out, model_tokens, model_state = self.__run_rnn(new)
+    out, model_tokens, model_state = self.__run_rnn(new, "chat_pre")
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
 
