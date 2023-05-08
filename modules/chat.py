@@ -9,6 +9,7 @@ class Chat:
   model_utils = None
   srv_chat = 'chat_server'
   chat_css = ''
+  # [[question, answer]]
   chatbot = []
   user = ''
   bot = ''
@@ -30,7 +31,7 @@ class Chat:
     model_tokens = []
     model_state = None
 
-    # 如果尚未初始化过、回退过，则向模型输入全部状态
+    # 如果尚未初始化过、回退过、重置过，则向模型输入全部状态
     # TODO: 重构 arrange_token 的部分
     if (self.dirty):
       self.dirty = False
@@ -81,6 +82,8 @@ class Chat:
       os.makedirs(f'./log/{self.bot}', exist_ok=True)
       log_bk_name = f'./log/{self.bot}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
       os.rename(log_name, log_bk_name)
+    # 现在这段在启动后没有执行过至少一次 __run_rnn 的情况下会出错
+    # TODO: 去除所有 chat_init 的状态存取？
     out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     try:
@@ -88,6 +91,7 @@ class Chat:
     except:
       pass
     self.chatbot = [[None, self.greeting]]
+    self.dirty = True
     save_file = f'save/{self.bot}.sav'
     if os.path.exists(save_file):
       os.remove(save_file)
