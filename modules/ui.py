@@ -31,13 +31,13 @@ class UI:
   def __update_chars_list(self):
     char_list = self.__get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
-  
+
   def __save_config(self, f, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     config = {
-      'top_p': top_p, 
-      'top_k': top_k, 
-      'temperature': temperature, 
-      'presence': presence_penalty, 
+      'top_p': top_p,
+      'top_k': top_k,
+      'temperature': temperature,
+      'presence': presence_penalty,
       'frequency': frequency_penalty
     }
     json.dump(config, f, indent=2)
@@ -46,7 +46,7 @@ class UI:
   def __save_config_role(self, top_p=0.7, top_k=0, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
       self.__save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty)
-  
+
   # 保存角色
   def __save_char(self, user='', bot='', greeting='', bot_persona='', example_message=''):
     with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
@@ -64,18 +64,18 @@ class UI:
       char['example_message'] = ''
     chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['example_message'])
     return_arr = (
-      char['user'], 
-      char['bot'], 
-      char['greeting'], 
+      char['user'],
+      char['bot'],
+      char['greeting'],
       char['bot_persona'],
       char['example_message'],
-      chatbot, 
-      gr.Textbox.update(interactive=True), 
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
+      chatbot,
+      gr.Textbox.update(interactive=True),
+      gr.Textbox.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
       gr.Button.update(interactive=True)
     )
     return return_arr
@@ -87,7 +87,7 @@ class UI:
       gr.Button.update(visible=True)
     )
     return return_arr
-  
+
   def __confirm_cancel(self):
     return_arr = (
       gr.Button.update(visible=True),
@@ -95,7 +95,7 @@ class UI:
       gr.Button.update(visible=False)
     )
     return return_arr
-  
+
   def __unlock_role_param(self):
     return_arr = self.__unlock_param(self.lock_flag_role)
     self.lock_flag_role = not self.lock_flag_role
@@ -113,25 +113,25 @@ class UI:
       action_text,
       chatbot,
       gr.Textbox.update(show_label=show_label),
-      gr.Textbox.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
+      gr.Textbox.update(interactive=interactive),
+      gr.Button.update(interactive=interactive),
+      gr.Button.update(interactive=interactive),
+      gr.Button.update(interactive=interactive),
+      gr.Button.update(interactive=interactive),
       gr.Button.update(interactive=interactive)
     )
     return result
-  
+
   def __arrange_token(self):
     if self.chat_model.check_token_count():
       self.chat_model.arrange_token()
     result = (
       gr.Textbox.update(show_label=False),
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
+      gr.Textbox.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
       gr.Button.update(interactive=True)
     )
     return result
@@ -148,33 +148,33 @@ class UI:
       gr.Button.update(visible=False)
     )
     return return_arr
-  
+
   def __unlock_param(self, flag):
     text = self.language_conf['LOCK']
     if not flag:
       text = self.language_conf['UNLOCK']
     return_arr = (
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
+      gr.Slider.update(interactive=flag),
+      gr.Slider.update(interactive=flag),
+      gr.Slider.update(interactive=flag),
+      gr.Slider.update(interactive=flag),
+      gr.Slider.update(interactive=flag),
       gr.Button.update(value=text)
     )
     return return_arr
-    
+
   # 初始化UI
   def __init_ui(self):
     with open(self.config_role_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
     return_arr = (
-      configs_role['top_p'], 
-      configs_role['top_k'], 
-      configs_role['temperature'], 
-      configs_role['presence'], 
-      configs_role['frequency'], 
-      gr.Dropdown.update(choices=char_list), 
+      configs_role['top_p'],
+      configs_role['top_k'],
+      configs_role['temperature'],
+      configs_role['presence'],
+      configs_role['frequency'],
+      gr.Dropdown.update(choices=char_list),
     )
     return return_arr
 
@@ -193,7 +193,7 @@ class UI:
             action_front = gr.Checkbox(label="旁白在前")
             with gr.Row():
               with gr.Column(min_width=150):
-                submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)       
+                submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)
               with gr.Column(min_width=150):
                 regen = gr.Button(self.language_conf['REGEN'], interactive=False)
               with gr.Column(min_width=150):
@@ -236,7 +236,7 @@ class UI:
         with gr.Row():
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
-      
+
       input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty]
       output_list = [message, action, chatbot]
       char_input_list = [user, bot, greeting, bot_persona, example_message, chatbot]
@@ -258,17 +258,17 @@ class UI:
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
 
       with gr.Tab(self.language_conf['DEBUG']):
-        test_now = gr.TextArea(placeholder=self.language_conf['TOKEN_NOW'], label=self.language_conf['OUTPUT'])
-        test_pre = gr.TextArea(placeholder=self.language_conf['TOKEN_LAST'], label=self.language_conf['OUTPUT'])
+        test_now = gr.TextArea(label=self.language_conf['TOKEN_NOW'])
+        test_pre = gr.TextArea(label=self.language_conf['TOKEN_LAST'])
         test_btn = gr.Button(self.language_conf['GET_TOKEN'])
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [
-        top_p, 
-        top_k, 
-        temperature, 
-        presence_penalty, 
-        frequency_penalty, 
+        top_p,
+        top_k,
+        temperature,
+        presence_penalty,
+        frequency_penalty,
         char_dropdown
       ]
       app.load(self.__init_ui, outputs=reload_list)
