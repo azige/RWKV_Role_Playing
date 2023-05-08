@@ -40,6 +40,9 @@ class Chat:
         chat_str = self.__get_chatbot_str(self.chatbot[1:-1])
         out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
         self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
+    else:
+      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
 
     return self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(next))
 
