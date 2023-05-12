@@ -2,7 +2,8 @@ from modules.model_utils import ModelUtils
 from pathlib import Path
 import os, json, datetime
 import pickle
-import copy, re
+import copy, re, gc
+import torch
 
 class Chat:
 
@@ -13,6 +14,8 @@ class Chat:
   chatbot = []
   user = ''
   bot = ''
+  action_start = ''
+  action_end = ''
   greeting = ''
   bot_persona = ''
   process_flag = False
@@ -28,6 +31,8 @@ class Chat:
       self.chat_css = f.read()
 
   def __run_rnn(self, next, base_stat="chat"):
+    gc.collect()
+    torch.cuda.empty_cache()
     model_tokens = []
     model_state = None
 
@@ -35,11 +40,11 @@ class Chat:
     # TODO: 重构 arrange_token 的部分
     if (self.dirty):
       self.dirty = False
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(self.init_prompt))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(self.init_prompt)))
       self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
       if len(self.chatbot) >= 4:
         chat_str = self.__get_chatbot_str(self.chatbot[1:-1])
-        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
         self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, base_stat)
@@ -47,19 +52,23 @@ class Chat:
 
     return self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(next))
 
-  def load_init_prompt(self, user, bot, greeting, bot_persona, example_message):
+  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message):
+    gc.collect()
+    torch.cuda.empty_cache()
     model_tokens = []
     model_state = None
     self.model_utils.all_state.clear()
     self.user = user
     self.bot = bot
+    self.action_start = action_start
+    self.action_end = action_end
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = self.__get_init_prompt(bot, bot_persona, user)
+    init_prompt = self.__get_init_prompt(bot, bot_persona, user, example_message)
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-    init_prompt = '\n'.join(init_prompt).strip() + '\n\n' + example_message.replace('<bot>', bot).replace('<user>', user)
+    init_prompt = '\n'.join(init_prompt).strip()
     if greeting:
       init_prompt += f"\n\n{bot}: {greeting}\n\n"
     self.init_prompt = init_prompt
@@ -108,18 +117,18 @@ class Chat:
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
 
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
-    message = message.strip().replace('\r\n','\n').replace('\n\n','\n') if message else ''
-    action = action.strip().replace('\r\n','\n').replace('\n\n','\n') if action else ''
+    message = message.strip().replace('\r\n','\n') if message else ''
+    action = action.strip().replace('\r\n','\n') if action else ''
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: "
-    msg = f"{action}"
+    msg = f"{message}"
     if action_front:
-      if message:
-        msg += f"“{message}”"
+      if action:
+        msg = f"{self.action_start}{action}{self.action_end}{msg}"
     else:
-      if message:
-        msg = f"“{message}”{msg}"
+      if action:
+        msg += f"{self.action_start}{action}{self.action_end}"
     new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.__run_rnn(new)
     self.chatbot += [[msg, None]]
@@ -252,11 +261,12 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
 
-  def __get_init_prompt(self, bot, bot_persona, user):
+  def __get_init_prompt(self, bot, bot_persona, user, example_message):
+    em = example_message.replace('<bot>', bot).replace('<user>', user)
     if self.lang == 'en':
-      init_prompt = f"You are {bot}, {bot_persona}\n\n"
+      init_prompt = f"You are {bot}, {bot_persona}\n\n{em}"
     else:
-      init_prompt = f"你是{bot}，{bot_persona}，你要合理的使用旁白来描述你的行动及行动所产生的后果。\n\n"
+      init_prompt = f"你是{bot}，{bot_persona}\n\n{em}"
     return init_prompt
 
   def get_test_data(self):
@@ -271,7 +281,7 @@ class Chat:
 
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 7000:
+    if len(data[1]) < 4096:
       return False
     return True
 
@@ -286,16 +296,18 @@ class Chat:
         break
       chat_str_pre = f'{self.bot}: {row[1]}\n\n' + chat_str_pre
       chat_str_pre = f'{self.user}: {row[0]}\n\n' + chat_str_pre
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str_pre))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str_pre)))
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     chat_str += f'{self.user}: {self.chatbot[-1][0]}\n\n'
     chat_str += f'{self.bot}: {self.chatbot[-1][1]}\n\n'
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.process_flag = False
 
   def __find_all_chat(self, input_str):
-    pattern = r'\“.*?\”'
+    if not self.action_start or not self.action_end:
+      return (0, len(input_str))
+    pattern = re.compile("\\" + self.action_start + ".*?\\" + self.action_end)
     while True:
       match = re.search(pattern, input_str)
       if not match:
@@ -308,11 +320,11 @@ class Chat:
     for l in pos_arr:
       if l[0] != 0:
         str1 = input_str[:l[0]]
-        output_data.append([str1, 'action'])
-      output_data.append([input_str[l[0] + 1:l[1] - 1], 'chat'])
+        output_data.append([str1, 'chat'])
+      output_data.append([input_str[l[0] + 1:l[1] - 1], 'action'])
       input_str = input_str[l[1]:]
     if str:
-      output_data.append([input_str, 'action'])
+      output_data.append([input_str, 'chat'])
     return output_data
 
   def __format_chat_html(self, chat_action_arr):
