@@ -82,7 +82,7 @@ class Chat:
       self.chatbot = data['chatbot']
     else:
       self.chatbot = [[None, greeting]]
-      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', "", model_tokens, model_state)
     return self.__generate_cai_chat_html()
 
   def reset_bot(self):
